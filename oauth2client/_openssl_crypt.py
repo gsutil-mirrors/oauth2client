@@ -15,6 +15,10 @@
 
 from OpenSSL import crypto
 
+from cryptography import exceptions
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
 from oauth2client import _helpers
 
 
@@ -44,10 +48,21 @@ class OpenSSLVerifier(object):
         """
         message = _helpers._to_bytes(message, encoding='utf-8')
         signature = _helpers._to_bytes(signature, encoding='utf-8')
+
+        if isinstance(self._pubkey, crypto.X509):
+            public_key = self._pubkey.to_cryptography().public_key()
+        else:
+            public_key = self._pubkey.to_cryptography_key()
+
+        # If it's a private key, extract the public key.
+        if hasattr(public_key, 'public_key'):
+            public_key = public_key.public_key()
+
         try:
-            crypto.verify(self._pubkey, signature, message, 'sha256')
+            public_key.verify(signature, message, padding.PKCS1v15(),
+                              hashes.SHA256())
             return True
-        except crypto.Error:
+        except exceptions.InvalidSignature:
             return False
 
     @staticmethod
@@ -94,7 +109,8 @@ class OpenSSLSigner(object):
             string, The signature of the message for the given key.
         """
         message = _helpers._to_bytes(message, encoding='utf-8')
-        return crypto.sign(self._key, message, 'sha256')
+        return self._key.to_cryptography_key().sign()
+        # return crypto.sign(self._key, message, 'sha256')
 
     @staticmethod
     def from_string(key, password=b'notasecret'):
