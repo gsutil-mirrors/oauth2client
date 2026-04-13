@@ -114,7 +114,6 @@ class OpenSSLSigner(object):
         message = _helpers._to_bytes(message, encoding='utf-8')
         crypto_key = self._key.to_cryptography_key()
         return crypto_key.sign(message, padding.PKCS1v15(), hashes.SHA256())
-        # return crypto.sign(self._key, message, 'sha256')
 
     @staticmethod
     def from_string(key, password=b'notasecret'):
